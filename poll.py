@@ -15,39 +15,44 @@ class Updater:
         self.bot = Bot(self.__token, base_url)
         self.base_url = base_url
         self.callback = self.on_response
+        self._queue = []
         
     async def on_response(self, message):
         pass
 
     async def __poll(self):
-        async with AsyncClient() as client:
-            client: AsyncClient
-            request = await client.get(
-                f"{self.base_url}{self.__token}/getUpdates",
-                headers={'Connection': 'keep-alive'}
-            )
-            response = json.loads(request.text, object_hook=lambda d: SimpleNamespace(**d))
+        while True:
+            if self.__offset == 0:
+                async with AsyncClient() as client:
+                    client: AsyncClient
+                    request = await client.get(
+                        f"{self.base_url}{self.__token}/getUpdates",
+                        headers={'Connection': 'keep-alive'}
+                    )
+                    
+                    response = json.loads(request.text, object_hook=lambda d: SimpleNamespace(**d))
 
-            if len(response.result) > 0:
-                self.__offset = response.result[-1].update_id
-            
-            else:
-                await self.__poll()
+                    if len(response.result) > 0:
+                        self.__offset = response.result[-1].update_id
+                    
+                    else:
+                        await request.aclose()
+                        continue
 
-        async with AsyncClient() as client:
-            client: AsyncClient
-            request = await client.get(
-                f"{self.base_url}{self.__token}/getUpdates?offset={self.__offset}",
-                headers={'Connection': 'keep-alive'}
-            )
-            response = json.loads(request.text, object_hook=lambda d: SimpleNamespace(**d))
+            async with AsyncClient() as client:
+                client: AsyncClient
+                request = await client.get(
+                    f"{self.base_url}{self.__token}/getUpdates?offset={self.__offset}",
+                    headers={'Connection': 'keep-alive'}
+                )
+                response = json.loads(request.text, object_hook=lambda d: SimpleNamespace(**d))
 
-            if len(response.result) > 0:
-                self.__offset += 1
+                if len(response.result) > 0:
+                    self.__offset += 1
 
-                for message in response.result:
-                    await self.callback(message.message)
-            await self.__poll()
+                    for message in response.result:
+                        await self.callback(message.message)
+                continue
 
     def start_polling(self, *args):
         for arg in args:
