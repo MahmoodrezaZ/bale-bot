@@ -15,7 +15,6 @@ class Updater:
         self.bot = Bot(self.__token, base_url)
         self.base_url = base_url
         self.callback = self.on_response
-        self._queue = []
         
     async def on_response(self, message):
         pass
